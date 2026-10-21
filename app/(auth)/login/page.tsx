@@ -48,6 +48,12 @@ function LoginForm() {
           ? "That email/phone and password combination is not correct."
           : apiError?.message ?? "Sign in failed. Please try again.",
       );
+    } finally {
+      // Release the form on EVERY terminating path. Next.js keeps a previously
+      // rendered route alive for instant navigations, so the instance that
+      // succeeded (and navigated away) can be shown again after logout. Without
+      // this, its `pending` flag stayed `true` and the Sign In button came back
+      // disabled with a spinner until a full reload.
       setPending(false);
     }
   };

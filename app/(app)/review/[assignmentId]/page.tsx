@@ -169,10 +169,12 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ assignm
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink">{task.title}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            {assignment.assigneeName} · effective deadline{" "}
-            {formatInstant(assignment.effectiveDueAt, timezone)} ·{" "}
-            {relativeFromNow(assignment.effectiveDueAt)}
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+            <span className="font-medium text-ink">{assignment.assigneeName}</span>
+            <span aria-hidden="true">·</span>
+            <span>effective deadline {formatInstant(assignment.effectiveDueAt, timezone)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{relativeFromNow(assignment.effectiveDueAt)}</span>
           </p>
         </div>
         <Link href="/review">
@@ -206,7 +208,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ assignm
         ) : (
           <ol className="mt-4 flex flex-col gap-6">
             {submissions.map((submission) => (
-              <li key={submission.id} className="border-l-2 border-line pl-3">
+              <li key={submission.id} className="rounded-xl border border-line bg-surface-low p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-ink">Attempt {submission.attempt}</span>
                   <SubmissionStatusBadge status={submission.status} />
@@ -229,7 +231,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ assignm
                     )}
                   </Alert>
                 )}
-                <div className="mt-3">
+                <div className="mt-3 rounded-lg border border-line bg-surface p-3">
                   <EvidenceViewer evidence={submission.evidence} />
                 </div>
               </li>
@@ -239,7 +241,7 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ assignm
       </Card>
 
       {canDecide && (
-        <Card>
+        <Card className="border-primary/40">
           <CardTitle>Your decision</CardTitle>
           <CardDescription>
             Approving is final for this assignment. Requesting changes sends it back to the employee

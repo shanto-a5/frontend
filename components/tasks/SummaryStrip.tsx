@@ -41,7 +41,7 @@ function Strip({
       <CardDescription>{description}</CardDescription>
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map((tile) => (
-          <div key={tile.label} className="flex flex-col gap-0.5 rounded-lg border border-line bg-surface p-3">
+          <div key={tile.label} className="flex flex-col gap-0.5 rounded-xl border border-line bg-surface-low p-3">
             <dt className="text-xs text-ink-muted">{tile.label}</dt>
             <dd className={cn("text-2xl font-semibold tabular-nums", TONE_TEXT[tile.tone])}>
               {tile.value}

@@ -24,11 +24,11 @@ export default function ForgotPasswordPage() {
     try {
       await requestPasswordReset(email);
       setSent(true);
-      setPending(false);
     } catch (caught) {
       const apiError = caught instanceof ApiError ? caught : null;
       setError(apiError);
       setFormError(apiError?.message ?? "Could not send the reset email. Please try again.");
+    } finally {
       setPending(false);
     }
   };

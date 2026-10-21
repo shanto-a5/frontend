@@ -37,6 +37,9 @@ export default function RegisterPage() {
       const apiError = caught instanceof ApiError ? caught : null;
       setError(apiError);
       setFormError(apiError?.message ?? "Registration failed. Please try again.");
+    } finally {
+      // Same lifecycle guard as the sign-in form: a successful registration
+      // navigates away, and the preserved route instance must come back idle.
       setPending(false);
     }
   };

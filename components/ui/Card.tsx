@@ -1,9 +1,11 @@
 import { cn } from "@/lib/cn";
 
-/** White surface panel with a quiet border — the app's one container. */
+/** Tonal surface panel — the app's one container (reference card treatment). */
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <section className={cn("rounded-lg border border-line bg-surface p-5 sm:p-6", className)}>
+    <section
+      className={cn("rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6", className)}
+    >
       {children}
     </section>
   );

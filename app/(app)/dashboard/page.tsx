@@ -35,7 +35,7 @@ function AssignmentRow({
     <li>
       <Link
         href={`/tasks/${detailId}`}
-        className="flex flex-wrap items-center gap-3 rounded-md px-3 py-3 transition-colors hover:bg-canvas"
+        className="flex flex-wrap items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-surface-low"
       >
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
@@ -107,38 +107,26 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-xl font-semibold text-ink">Dashboard</h1>
-        <p className="mt-1 text-sm text-ink-muted">{company?.name}</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-ink">
+            {isBoss ? "Dashboard" : "Your work"}
+          </h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {company?.name} · ranked by the server, most urgent first
+          </p>
+        </div>
+        {isBoss && (
+          <Link href="/tasks/new">
+            <Button>Create a task</Button>
+          </Link>
+        )}
       </header>
 
       {error && (
         <Alert tone="danger" title="Could not load tasks" role="alert">
           {error}
         </Alert>
-      )}
-
-      {isBoss && (
-        <Card>
-          <CardTitle>Boss tools</CardTitle>
-          <CardDescription>
-            Assign work with clear deadlines, watch releases, and manage the team.
-          </CardDescription>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/tasks/new">
-              <Button>Create a task</Button>
-            </Link>
-            <Link href="/review">
-              <Button variant="secondary">Review queue</Button>
-            </Link>
-            <Link href="/tasks">
-              <Button variant="secondary">All tasks</Button>
-            </Link>
-            <Link href="/company">
-              <Button variant="secondary">Company &amp; team</Button>
-            </Link>
-          </div>
-        </Card>
       )}
 
       {isBoss && summary?.boss && <BossSummaryStrip summary={summary.boss} />}
@@ -162,7 +150,7 @@ export default function DashboardPage() {
           <>
             {nextRow && (
               <Card className="border-primary/40">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                       Next task
@@ -173,12 +161,14 @@ export default function DashboardPage() {
                         {nextRow.task.instructions}
                       </p>
                     )}
-                    <p className="mt-2 text-sm text-ink-muted">
-                      Due {formatInstant(nextRow.effectiveDueAt, company?.timezone)} ·{" "}
-                      {dueLabel(nextRow.effectiveDueAt, company?.timezone)}
+                    <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                      <span className="rounded-lg border border-line bg-surface-low px-2.5 py-1 text-xs font-medium text-ink">
+                        Due {formatInstant(nextRow.effectiveDueAt, company?.timezone)}
+                      </span>
+                      <span>{dueLabel(nextRow.effectiveDueAt, company?.timezone)}</span>
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
                     <PresentationBadge state={nextRow.presentationState} workflowState={nextRow.state} />
                     <Link href={`/tasks/${isBoss ? nextRow.taskId : nextRow.id}`}>
                       <Button>Open task</Button>
@@ -191,8 +181,7 @@ export default function DashboardPage() {
             {others.length > 0 && (
               <Card>
                 <ul className="divide-y divide-line">
-                  {others.map((row) => (
-                    <AssignmentRow
+                  {others.map((row) => (                    <AssignmentRow
                       key={row.id}
                       row={row}
                       timezone={company?.timezone ?? "Asia/Dhaka"}
@@ -208,6 +197,26 @@ export default function DashboardPage() {
           </>
         )}
       </section>
+
+      {isBoss && (
+        <Card>
+          <CardTitle>Manage</CardTitle>
+          <CardDescription>
+            Assign work with clear deadlines, watch releases, and manage the team.
+          </CardDescription>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/review">
+              <Button variant="secondary">Review queue</Button>
+            </Link>
+            <Link href="/tasks">
+              <Button variant="secondary">All tasks</Button>
+            </Link>
+            <Link href="/company">
+              <Button variant="secondary">Company &amp; team</Button>
+            </Link>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

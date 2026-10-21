@@ -61,7 +61,7 @@ type Loaded =
 type ReleaseMode = "keep" | "preset" | "custom";
 
 const INPUT_CLASSES =
-  "min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink " +
+  "min-h-11 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink " +
   "focus-visible:outline-2 focus-visible:outline-primary";
 
 function TaskMeta({
@@ -138,7 +138,7 @@ function AttemptsCard({
       ) : (
         <ol className="mt-4 flex flex-col gap-5">
           {submissions.map((submission) => (
-            <li key={submission.id} className="border-l-2 border-line pl-3">
+            <li key={submission.id} className="rounded-xl border border-line bg-surface-low p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-medium text-ink">Attempt {submission.attempt}</span>
                 <SubmissionStatusBadge status={submission.status} />
@@ -151,7 +151,7 @@ function AttemptsCard({
                   {submission.description}
                 </p>
               )}
-              <div className="mt-3">
+              <div className="mt-3 rounded-lg border border-line bg-surface p-3">
                 <EvidenceViewer evidence={submission.evidence} />
               </div>
             </li>
@@ -615,12 +615,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-xl font-semibold text-ink">{task.title}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <PresentationBadge state={assignment.presentationState} workflowState={assignment.state} />
-          <AssignmentStateBadge state={assignment.state} />
-          <PriorityBadge priority={task.priority} />
-          {scheduled && <Badge tone="info">Not yet released</Badge>}
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold text-ink">{task.title}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <PresentationBadge state={assignment.presentationState} workflowState={assignment.state} />
+            <AssignmentStateBadge state={assignment.state} />
+            <PriorityBadge priority={task.priority} />
+            {scheduled && <Badge tone="info">Not yet released</Badge>}
+          </div>
         </div>
       </header>
 

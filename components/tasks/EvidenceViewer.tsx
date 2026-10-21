@@ -1,75 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { ApiError } from "@/lib/api/client";
+import { EvidenceImageGallery, type GalleryImageItem } from "@/components/tasks/EvidenceImageGallery";
 import { getEvidenceUrl } from "@/lib/api/submissions";
 import type { Evidence } from "@/lib/api/types";
 
 /**
  * Renders one submission attempt's evidence (M6, plan §5.5; reused by the M7
- * review screen).
+ * review screen and the employee's attempt history).
  *
  * Files are PRIVATE: the payload only ever carries a durable `publicId`, never
- * a delivery URL. Bytes are loaded only after the user asks for them, through
- * the authorized `GET /evidence/:id/url`, which mints a short-lived signed URL.
- * Nothing is fetched silently, and a failure to sign shows an honest error
- * rather than falling back to an unsigned link.
+ * a delivery URL. A thumbnail requests bytes through the authorized
+ * `GET /evidence/:id/url`, which mints a short-lived signed URL — the gallery
+ * never falls back to an unsigned/public link and never persists the URL.
+ * Signed-URL failures surface honestly with a retry; expired URLs are
+ * re-fetched once through the same authorized endpoint.
  *
  * Links are external and are rendered as real anchors with
  * `rel="noopener noreferrer"` and the URL visible as text, so a person can see
  * where a link goes before following it.
  */
-
-function EvidenceFile({ evidence }: { evidence: Evidence }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await getEvidenceUrl(evidence.id);
-      setUrl(result.url);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : "Could not open this file.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-2">
-      {url ? (
-        // The signed URL expires; a reload simply re-fetches one. The `key`
-        // forces a fresh <img> so a stale failure state cannot linger.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={url}
-          src={url}
-          alt={evidence.caption || "Submitted evidence"}
-          className="max-h-96 w-auto rounded-md border border-line"
-          onError={() => {
-            setUrl(null);
-            setError("That preview expired. Open it again to load a fresh link.");
-          }}
-        />
-      ) : (
-        <Button size="sm" variant="secondary" loading={loading} onClick={() => void load()}>
-          {`Open ${evidence.format ?? "image"}`}
-        </Button>
-      )}
-      {error && (
-        <p className="text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function EvidenceViewer({
   evidence,
   emptyHint = "No files or links were attached to this attempt.",
@@ -81,48 +31,54 @@ export function EvidenceViewer({
     return <p className="text-sm text-ink-muted">{emptyHint}</p>;
   }
 
+  const files = evidence.filter((item) => item.kind === "file");
+  const links = evidence.filter((item) => item.kind === "link");
+
+  const images: GalleryImageItem[] = files.map((item, index) => ({
+    id: item.id,
+    alt: item.caption || `Submitted evidence ${index + 1}`,
+    fallbackLabel: (item.format ?? "IMG").toUpperCase().slice(0, 5),
+    caption: item.caption || undefined,
+    loadSrc: async () => {
+      const result = await getEvidenceUrl(item.id);
+      if (!result.url) throw new Error("No preview is available for this file.");
+      return result.url;
+    },
+  }));
+
   return (
     <div className="flex flex-col gap-4">
-      {evidence.some((item) => item.kind === "file") && (
+      {files.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-ink">Files</h3>
-          <ul className="flex flex-col gap-4">
-            {evidence
-              .filter((item) => item.kind === "file")
-              .map((item) => (
-                <li key={item.id} className="flex flex-col gap-1">
-                  <EvidenceFile evidence={item} />
-                  {item.caption && <p className="text-sm text-ink-muted">{item.caption}</p>}
-                </li>
-              ))}
-          </ul>
+          <h3 className="text-sm font-medium text-ink">
+            Files <span className="font-normal text-ink-muted">({files.length})</span>
+          </h3>
+          <EvidenceImageGallery ariaLabel="Evidence images" items={images} />
         </div>
       )}
 
-      {evidence.some((item) => item.kind === "link") && (
+      {links.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-ink">Links</h3>
           <ul className="flex flex-col gap-1">
-            {evidence
-              .filter((item) => item.kind === "link")
-              .map((item) => (
-                <li key={item.id} className="min-w-0">
-                  <a
-                    href={item.url ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block truncate text-sm text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-primary"
-                  >
-                    {item.url}
-                  </a>
-                  {item.caption && <p className="text-sm text-ink-muted">{item.caption}</p>}
-                </li>
-              ))}
+            {links.map((item) => (
+              <li key={item.id} className="min-w-0">
+                <a
+                  href={item.url ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block truncate text-sm text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {item.url}
+                </a>
+                {item.caption && <p className="text-sm text-ink-muted">{item.caption}</p>}
+              </li>
+            ))}
           </ul>
         </div>
       )}
 
-      {evidence.length > 0 && !evidence.some((item) => item.kind === "file") && (
+      {evidence.length > 0 && files.length === 0 && (
         <Alert tone="neutral" title="Note">
           No files were attached to this attempt — only links.
         </Alert>

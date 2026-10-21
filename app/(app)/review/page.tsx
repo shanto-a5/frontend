@@ -79,11 +79,16 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-xl font-semibold text-ink">Review queue</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {company?.name} · oldest submissions first
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-ink">Review queue</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {company?.name} · oldest submissions first
+          </p>
+        </div>
+        <Badge tone={queue.items.length > 0 ? "info" : "neutral"}>
+          {queue.items.length} waiting
+        </Badge>
       </header>
 
       <Card>
@@ -99,27 +104,43 @@ export default function ReviewQueuePage() {
             When an employee submits, it appears here for review.
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-line">
+          <ul className="mt-4 flex flex-col gap-3">
             {queue.items.map((item) => (
-              <li key={item.submission.id}>
-                <Link
-                  href={`/review/${item.assignment.id}`}
-                  className="flex flex-wrap items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-canvas"
-                >
+              <li key={item.submission.id} className="rounded-xl border border-line bg-surface-low p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink">{item.task.title}</p>
-                    <p className="mt-0.5 text-sm text-ink-muted">
-                      {item.assigneeName} · attempt {item.submission.attempt} · submitted{" "}
-                      {relativeFromNow(item.submission.createdAt)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/review/${item.assignment.id}`}
+                        className="truncate text-base font-semibold text-ink hover:underline"
+                      >
+                        {item.task.title}
+                      </Link>
+                      {item.task.priority === "high" && <Badge tone="warning">High priority</Badge>}
+                    </div>
+                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-muted">
+                      <span className="font-medium text-ink">{item.assigneeName}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Attempt {item.submission.attempt}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>submitted {relativeFromNow(item.submission.createdAt)}</span>
+                      <span aria-hidden="true">·</span>
+                      <Badge tone="info">
+                        {item.evidence.length} item{item.evidence.length === 1 ? "" : "s"}
+                      </Badge>
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {item.task.priority === "high" && <Badge tone="warning">High priority</Badge>}
-                    <Badge tone="info">
-                      {item.evidence.length} item{item.evidence.length === 1 ? "" : "s"}
-                    </Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link href={`/tasks/${item.task.id}`}>
+                      <Button variant="secondary" size="sm">
+                        Quick view
+                      </Button>
+                    </Link>
+                    <Link href={`/review/${item.assignment.id}`}>
+                      <Button size="sm">Review now</Button>
+                    </Link>
                   </div>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>
@@ -134,7 +155,7 @@ export default function ReviewQueuePage() {
         ) : (
           <ul className="mt-4 divide-y divide-line">
             {queue.awaitingEmployee.map((row) => (
-              <li key={row.assignment.id} className="flex flex-wrap items-center gap-3 px-2 py-3">
+              <li key={row.assignment.id} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-ink">{row.task.title}</p>
                   <p className="mt-0.5 text-sm text-ink-muted">

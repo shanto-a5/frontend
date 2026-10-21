@@ -33,7 +33,6 @@ function ResetPasswordForm() {
     try {
       await confirmPasswordReset(token, password);
       setDone(true);
-      setPending(false);
     } catch (caught) {
       const apiError = caught instanceof ApiError ? caught : null;
       setError(apiError);
@@ -42,6 +41,7 @@ function ResetPasswordForm() {
           ? "This reset link is not valid or has already been used. Request a new one."
           : apiError?.message ?? "Could not reset the password. Please try again.",
       );
+    } finally {
       setPending(false);
     }
   };

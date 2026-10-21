@@ -10,10 +10,13 @@ import { Loading } from "@/components/ui/Loading";
 import { cn } from "@/lib/cn";
 
 /**
- * Authenticated app shell: skip link target, product header with the signed-in
- * user's name and a sign-out control, and role-aware navigation. Wide screens
- * (>= 768px) get a persistent side navigation; narrow screens get a horizontal
- * nav row under the header (plan §6 responsive rules).
+ * Authenticated app shell: skip link target, product header with the
+ * signed-in user's name and a sign-out control, and role-aware navigation.
+ * Wide screens (>= 768px) get the navigation in the header; narrow screens get
+ * a horizontal nav row under it (plan §6 responsive rules).
+ *
+ * Visual language follows the supplied references: a compact tonal header with
+ * the product mark, a company pill, pill navigation and an avatar cluster.
  */
 
 function Nav({ className }: { className?: string }) {
@@ -29,7 +32,7 @@ function Nav({ className }: { className?: string }) {
 
   return (
     <nav aria-label="Main" className={className}>
-      <ul className="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
+      <ul className="flex flex-wrap gap-1 md:flex-nowrap">
         {links.map((link) => {
           const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
@@ -38,10 +41,10 @@ function Nav({ className }: { className?: string }) {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary-soft text-primary-soft-ink"
-                    : "text-ink-muted hover:bg-canvas hover:text-ink",
+                    ? "bg-primary-soft text-primary-soft-ink shadow-sm"
+                    : "text-ink-muted hover:bg-surface-low hover:text-ink",
                 )}
               >
                 {link.label}
@@ -52,6 +55,12 @@ function Nav({ className }: { className?: string }) {
       </ul>
     </nav>
   );
+}
+
+function initialsOf(name: string | undefined): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
 function UserMenu() {
@@ -65,7 +74,15 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="hidden text-sm text-ink-muted sm:inline">{user?.name}</span>
+      <span className="hidden items-center gap-2 sm:flex">
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-ink"
+        >
+          {initialsOf(user?.name)}
+        </span>
+        <span className="max-w-32 truncate text-sm font-medium text-ink">{user?.name}</span>
+      </span>
       <Button variant="secondary" size="sm" onClick={onSignOut}>
         Sign out
       </Button>
@@ -74,8 +91,8 @@ function UserMenu() {
 }
 
 function Shell({ children }: { children: ReactNode }) {
+  const { company, status: companyStatus } = useCompany();
   const { status: sessionStatus } = useSession();
-  const { status: companyStatus } = useCompany();
   const router = useRouter();
 
   useEffect(() => {
@@ -97,22 +114,41 @@ function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="text-base font-semibold text-primary">
-              Progress
-            </Link>
-            {/* `usePathname` cannot resolve during prerendering of routes with
-                unknown dynamic params (`/tasks/[id]`, `/review/[assignmentId]`)
-                — the documented fix is a Suspense boundary around the active-
-                link component so the rest of the shell still prerenders
-                (nextjs.org/docs/messages/blocking-prerender-client-hook). */}
+      <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-container text-sm font-bold text-white shadow-sm"
+            >
+              P
+            </span>
+            <span className="hidden leading-tight sm:block">
+              <span className="block text-sm font-semibold text-ink">Progress</span>
+              <span className="block text-[11px] text-ink-muted">Work tracker</span>
+            </span>
+          </Link>
+
+          {company && (
+            <span className="hidden min-w-0 max-w-48 truncate rounded-full border border-line bg-surface-low px-3 py-1 text-xs font-medium text-ink-muted lg:inline">
+              {company.name}
+            </span>
+          )}
+
+          {/* `usePathname` cannot resolve during prerendering of routes with
+              unknown dynamic params (`/tasks/[id]`, `/review/[assignmentId]`)
+              — the documented fix is a Suspense boundary around the active-
+              link component so the rest of the shell still prerenders
+              (nextjs.org/docs/messages/blocking-prerender-client-hook). */}
+          <div className="ml-auto hidden md:block">
             <Suspense fallback={null}>
-              <Nav className="hidden md:block" />
+              <Nav />
             </Suspense>
           </div>
-          <UserMenu />
+
+          <div className="ml-auto md:ml-0">
+            <UserMenu />
+          </div>
         </div>
         <Suspense fallback={null}>
           <Nav className="border-t border-line px-4 py-2 md:hidden" />
@@ -120,7 +156,7 @@ function Shell({ children }: { children: ReactNode }) {
       </header>
       <main
         id="main-content"
-        className="relative mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6"
+        className="relative mx-auto w-full max-w-7xl flex-1 px-4 py-7 sm:px-6 sm:py-9 lg:px-8"
       >
         {children}
         {isBooting && (

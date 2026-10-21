@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/client";
 import { useCompany } from "@/components/CompanyProvider";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Field";
 import { Loading } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -68,7 +69,7 @@ function BossTaskList({ timezone }: { timezone: string }) {
 
       <Card>
         <div className="flex flex-wrap items-end gap-4">
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select
               label="Status"
               value={status}
@@ -84,7 +85,7 @@ function BossTaskList({ timezone }: { timezone: string }) {
               <option value="cancelled">Cancelled</option>
             </Select>
           </div>
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select
               label="Release"
               value={upcoming}
@@ -115,33 +116,41 @@ function BossTaskList({ timezone }: { timezone: string }) {
         <ul className="flex flex-col gap-3">
           {tasks.map((task) => (
             <li key={task.id}>
-              <Card>
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <Card className="transition-shadow hover:shadow-md">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Link
                         href={`/tasks/${task.id}`}
-                        className="text-base font-semibold text-ink hover:underline"
+                        className="truncate text-base font-semibold text-ink hover:underline"
                       >
                         {task.title}
                       </Link>
                       <TaskStateBadge state={task.state} />
                       <PriorityBadge priority={task.priority} />
-                      {task.frozen && <span className="text-xs text-ink-muted">Locked (submissions exist)</span>}
-                    </p>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      Released {formatInstant(task.releasesAt, timezone)} ·{" "}
-                      {dueLabel(task.dueAt, timezone)} ({relativeFromNow(task.dueAt)})
-                    </p>
+                      {task.frozen && (
+                        <Badge tone="neutral">Locked (submissions exist)</Badge>
+                      )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
+                      <span className="rounded-lg border border-line bg-surface-low px-2.5 py-1 text-xs font-medium text-ink">
+                        Due {formatInstant(task.dueAt, timezone)}
+                      </span>
+                      <span>{dueLabel(task.dueAt, timezone)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Released {formatInstant(task.releasesAt, timezone)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{relativeFromNow(task.dueAt)}</span>
+                    </div>
                   </div>
-                  <Link href={`/tasks/${task.id}`}>
+                  <Link href={`/tasks/${task.id}`} className="shrink-0">
                     <Button variant="secondary" size="sm">
                       Open
                     </Button>
                   </Link>
                 </div>
                 {task.assignments.length > 0 && (
-                  <ul className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+                  <ul className="mt-4 flex flex-col gap-2 border-t border-line pt-3">
                     {task.assignments.map((assignment) => (
                       <li key={assignment.id} className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="min-w-0 flex-1 truncate text-ink">{assignment.assigneeName}</span>
@@ -178,22 +187,22 @@ function EmployeeTaskList({ rows, timezone }: { rows: MyAssignment[]; timezone: 
           <li key={row.id}>
             <Link
               href={`/tasks/${row.id}`}
-              className="flex flex-wrap items-center gap-3 py-3 transition-colors hover:bg-canvas"
+              className="flex flex-wrap items-center gap-3 py-3 transition-colors hover:bg-surface-low"
             >
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-sm font-medium text-ink">
                   {row.next && (
-                    <span className="rounded bg-primary-soft px-1.5 py-0.5 text-xs font-semibold text-primary-soft-ink">
+                    <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary-soft-ink">
                       Next
                     </span>
                   )}
-                  {row.task.title}
+                  <span className="truncate">{row.task.title}</span>
                 </p>
-                <p className="mt-0.5 text-sm text-ink-muted">
+                <p className="mt-1 text-sm text-ink-muted">
                   Due {formatInstant(row.effectiveDueAt, timezone)} · {relativeFromNow(row.effectiveDueAt)}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <PriorityBadge priority={row.task.priority} />
                 <PresentationBadge state={row.presentationState} workflowState={row.state} />
               </div>
@@ -250,7 +259,7 @@ export default function TasksPage() {
   const timezone = company?.timezone ?? "Asia/Dhaka";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink">{isBoss ? "Tasks" : "My tasks"}</h1>

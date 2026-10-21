@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
 import { ApiError } from "@/lib/api/client";
 import { createSubmission, deleteUpload, uploadEvidenceFile } from "@/lib/api/submissions";
+import { EvidenceImageGallery, type GalleryImageItem } from "@/components/tasks/EvidenceImageGallery";
 import type { EvidenceFileInput } from "@/lib/api/types";
 
 /**
@@ -116,32 +117,23 @@ const isHttpUrl = (value: string) => {
 };
 
 /**
- * Row thumbnail: a local object URL when the browser can paint it, an
- * extension placeholder otherwise (HEIC/HEIF before upload), and an instant
- * fallback if the image element itself fails to load — never a broken icon.
+ * The compact gallery's status line mirrors the row lifecycle exactly. It is
+ * derived from the same row state — opening or expanding the gallery can never
+ * promote a pending file to "Uploaded".
  */
-function FileThumb({ row }: { row: UploadRow }) {
-  const [broken, setBroken] = useState(false);
-  if (row.previewUrl && !broken) {
-    return (
-      // A local object URL — the user's own file, never a server URL.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={row.previewUrl}
-        alt=""
-        onError={() => setBroken(true)}
-        className="size-12 shrink-0 rounded-md border border-line object-cover"
-      />
-    );
+function galleryStatus(row: UploadRow): GalleryImageItem["status"] {
+  switch (row.status) {
+    case "queued":
+      return { label: "Queued", tone: "muted" };
+    case "uploading":
+      return { label: `${Math.round(row.progress * 100)}%`, tone: "muted" };
+    case "processing":
+      return { label: "Processing", tone: "muted" };
+    case "done":
+      return { label: "Uploaded", tone: "success" };
+    case "error":
+      return { label: "Failed", tone: "danger" };
   }
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-12 shrink-0 items-center justify-center rounded-md border border-line bg-canvas text-[10px] font-semibold text-ink-muted"
-    >
-      {fileExtensionLabel(row.file.name)}
-    </span>
-  );
 }
 
 export function SubmissionForm({
@@ -301,6 +293,17 @@ export function SubmissionForm({
   const canSubmit =
     !submitting && !pendingUploads && !hasFailedUpload && badLinks.length === 0 && !totalTooBig;
 
+  // A presentation-only projection of the upload rows. No handler here changes
+  // row state: the gallery only decides what to show.
+  const galleryItems: GalleryImageItem[] = rows.map((row) => ({
+    id: row.key,
+    alt: row.file.name,
+    src: row.previewUrl,
+    fallbackLabel: fileExtensionLabel(row.file.name),
+    caption: row.file.name,
+    status: galleryStatus(row),
+  }));
+
   const onSubmit = async () => {
     setFormError(null);
     setSubmitting(true);
@@ -394,10 +397,17 @@ export function SubmissionForm({
           {totalTooBig && <p className="text-sm text-danger">Total upload size must be 100 MB or less.</p>}
 
           {rows.length > 0 && (
+            <EvidenceImageGallery
+              ariaLabel="Selected screenshots"
+              items={galleryItems}
+              className="mt-1"
+            />
+          )}
+
+          {rows.length > 0 && (
             <ul className="mt-1 divide-y divide-line">
               {rows.map((row) => (
                 <li key={row.key} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-3">
-                  <FileThumb row={row} />
                   <span className="min-w-0 flex-1 truncate text-sm text-ink">{row.file.name}</span>
                   <span className="text-xs text-ink-muted">{Math.round(row.file.size / 1024)} KB</span>
                   <div className="flex min-w-40 items-center gap-2">
@@ -483,7 +493,7 @@ export function SubmissionForm({
                   onChange={(event) => updateLink(index, event.target.value)}
                   placeholder="https://example.com/evidence"
                   aria-invalid={link.trim() !== "" && !isHttpUrl(link) ? true : undefined}
-                  className="min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-primary"
+                  className="min-h-11 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-primary"
                 />
                 <Button size="sm" variant="ghost" onClick={() => removeLink(index)}>
                   Remove
