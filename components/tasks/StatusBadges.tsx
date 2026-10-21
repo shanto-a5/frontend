@@ -1,5 +1,5 @@
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import type { AssignmentState, PresentationState, TaskPriority } from "@/lib/api/types";
+import type { AssignmentState, PresentationState, SubmissionStatus, TaskPriority } from "@/lib/api/types";
 
 /**
  * Status chips for tasks and assignments. The workflow state (what the
@@ -63,4 +63,16 @@ export function TaskStateBadge({ state }: { state: "open" | "cancelled" }) {
   ) : (
     <Badge tone="success">Open</Badge>
   );
+}
+
+/** The per-attempt verdict (M6/M7): what the boss did with THIS attempt. */
+const SUBMISSION_LABELS: Record<SubmissionStatus, { label: string; tone: BadgeTone }> = {
+  pending: { label: "Awaiting review", tone: "info" },
+  approved: { label: "Approved", tone: "success" },
+  changes_requested: { label: "Changes requested", tone: "warning" },
+};
+
+export function SubmissionStatusBadge({ status }: { status: SubmissionStatus }) {
+  const { label, tone } = SUBMISSION_LABELS[status] ?? SUBMISSION_LABELS.pending;
+  return <Badge tone={tone}>{label}</Badge>;
 }

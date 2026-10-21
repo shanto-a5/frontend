@@ -11,6 +11,8 @@ import type {
   ActivityEvent,
   MyTasksResponse,
   PresentationState,
+  SubmissionWithEvidence,
+  SummaryResponse,
   Task,
   TaskAssignment,
   TaskPriority,
@@ -52,6 +54,8 @@ export interface AssignmentDetailResponse {
     presentationState: PresentationState;
   };
   task: Task;
+  /** Newest attempt first, each with its evidence (M6). */
+  submissions: SubmissionWithEvidence[];
   activity: ActivityEvent[];
 }
 
@@ -105,6 +109,11 @@ export async function myTasks(): Promise<MyTasksResponse> {
 /** The assignee or a boss of the same company may read; anyone else 404s. */
 export async function getAssignment(id: string): Promise<AssignmentDetailResponse> {
   return api.get<AssignmentDetailResponse>(`/assignments/${id}`);
+}
+
+/** The server-authoritative dashboard summary (M9) — never counted client-side. */
+export async function getSummary(): Promise<SummaryResponse> {
+  return api.get<SummaryResponse>("/summary");
 }
 
 /** Boss-only per-assignment deadline override; null clears the override. */

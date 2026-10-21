@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { myTasks } from "@/lib/api/tasks";
+import { myTasks, getSummary } from "@/lib/api/tasks";
 import { ApiError } from "@/lib/api/client";
 import { useCompany } from "@/components/CompanyProvider";
 import { Card, CardTitle, CardDescription } from "@/components/ui/Card";
@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { Loading } from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
-import { PriorityBadge, PresentationBadge } from "@/components/tasks/StatusBadges";import { dueLabel, formatInstant, relativeFromNow } from "@/lib/format";
-import type { MyAssignment } from "@/lib/api/types";
+import { BossSummaryStrip, EmployeeSummaryStrip } from "@/components/tasks/SummaryStrip";import { PriorityBadge, PresentationBadge } from "@/components/tasks/StatusBadges";import { dueLabel, formatInstant, relativeFromNow } from "@/lib/format";
+import type { MyAssignment, SummaryResponse } from "@/lib/api/types";
 
 /**
  * The home surface after sign-in. Employees get their server-ranked work list
@@ -65,6 +65,7 @@ export default function DashboardPage() {
 
   const [rows, setRows] = useState<MyAssignment[] | null>(null);
   const [nextId, setNextId] = useState<string | null>(null);
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -76,10 +77,16 @@ export default function DashboardPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const result = await myTasks();
+        // The list and the summary are independent reads; the summary is
+        // best-effort so a summary hiccup never blanks the work list.
+        const [result, summaryResult] = await Promise.all([
+          myTasks(),
+          getSummary().catch(() => null),
+        ]);
         if (cancelled) return;
         setRows(result.assignments);
         setNextId(result.nextAssignmentId);
+        setSummary(summaryResult);
       } catch (caught) {
         if (cancelled) return;
         setError(caught instanceof ApiError ? caught.message : "Could not load your tasks.");
@@ -121,6 +128,9 @@ export default function DashboardPage() {
             <Link href="/tasks/new">
               <Button>Create a task</Button>
             </Link>
+            <Link href="/review">
+              <Button variant="secondary">Review queue</Button>
+            </Link>
             <Link href="/tasks">
               <Button variant="secondary">All tasks</Button>
             </Link>
@@ -130,6 +140,9 @@ export default function DashboardPage() {
           </div>
         </Card>
       )}
+
+      {isBoss && summary?.boss && <BossSummaryStrip summary={summary.boss} />}
+      {summary?.employee && <EmployeeSummaryStrip summary={summary.employee} />}
 
       <section aria-labelledby="my-work-heading" className="flex flex-col gap-3">
         <h2 id="my-work-heading" className="text-base font-semibold text-ink">

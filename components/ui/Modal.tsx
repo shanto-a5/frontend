@@ -29,7 +29,29 @@ export function Modal({
     const previouslyFocused = document.activeElement as HTMLElement | null;
     dialogRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      // Trap Tab inside the dialog so focus cannot wander to the page behind it
+      // while the modal is modal (WCAG 2.4.3 focus order, 2.1.2 no keyboard trap
+      // on the page as a whole — Escape always exits).
+      if (event.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+        if (event.shiftKey && (active === first || active === dialogRef.current)) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
@@ -49,11 +71,11 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-lg"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-surface p-5 shadow-lg"
       >
         <h2 className="text-base font-semibold text-ink">{title}</h2>
         <div className="mt-2 text-sm text-ink-muted">{children}</div>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
           {footer ?? (
             <Button variant="secondary" onClick={onClose}>
               Close

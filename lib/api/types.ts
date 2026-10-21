@@ -153,6 +153,154 @@ export interface ActivityEvent {
   createdAt: string;
 }
 
+/* ---------- submissions, evidence, review (M6/M7) ---------- */
+
+export type SubmissionStatus = "pending" | "approved" | "changes_requested";
+export type EvidenceKind = "file" | "link";
+
+/**
+ * One evidence row on a submission attempt. A `file` row carries the durable
+ * `publicId` (never a delivery URL — the client fetches bytes through
+ * `getEvidenceUrl`, which authorizes and mints a short-lived signed URL).
+ * A `link` row carries its stored `url`.
+ */
+export interface Evidence {
+  id: string;
+  submissionId: string;
+  assignmentId: string;
+  kind: EvidenceKind;
+  publicId: string | null;
+  resourceType: string | null;
+  format: string | null;
+  url: string | null;
+  caption: string;
+  position: number;
+}
+
+export interface Submission {
+  id: string;
+  assignmentId: string;
+  taskId: string;
+  companyId: string;
+  submittedBy: string;
+  attempt: number;
+  description: string;
+  status: SubmissionStatus;
+  reviewActionId: string | null;
+  createdAt: string;
+}
+
+export interface SubmissionWithEvidence extends Submission {
+  evidence: Evidence[];
+  /** The immutable decision on this attempt, if it has been reviewed (M7). */
+  reviewAction: ReviewAction | null;
+}
+
+/** `POST /api/v1/uploads` — the durable handles an upload returns. */
+export interface UploadedMedia {
+  publicId: string;
+  resourceType: string;
+  format: string | null;
+  restricted: true;
+}
+
+/** One already-uploaded file the submission references by handle. */
+export interface EvidenceFileInput {
+  publicId: string;
+  resourceType: string;
+  format: string | null;
+  caption?: string;
+}
+
+export interface CreateSubmissionInput {
+  description?: string;
+  links?: string[];
+  files?: EvidenceFileInput[];
+  idempotencyKey?: string;
+}
+
+export interface CreateSubmissionResponse {
+  submission: Submission;
+  evidence: Evidence[];
+  assignment: TaskAssignment;
+  task: Task;
+  idempotentReplay: boolean;
+}
+
+/* ---------- review (M7) ---------- */
+
+export type ReviewActionKind = "approved" | "changes_requested";
+
+/** One immutable boss decision on an attempt (M7). */
+export interface ReviewAction {
+  id: string;
+  submissionId: string;
+  assignmentId: string;
+  companyId: string;
+  actorId: string;
+  action: ReviewActionKind;
+  message: string;
+  revisedDueAt: string | null;
+  filePublicIds: string[];
+  links: string[];
+  createdAt: string;
+}
+
+/** One FIFO review-queue item: the attempt, its scope, and its evidence. */
+export interface ReviewQueueItem {
+  submission: Submission;
+  assignment: TaskAssignment;
+  task: Task;
+  assigneeName: string;
+  evidence: Evidence[];
+}
+
+export interface ReviewQueueResponse {
+  items: ReviewQueueItem[];
+  awaitingEmployee: { assignment: TaskAssignment; task: Task }[];
+}
+
+export interface ReviewDecisionResponse {
+  reviewAction: ReviewAction;
+  submission: Submission;
+  assignment: TaskAssignment;
+  task: Task;
+}
+
+export interface RequestChangesInput {
+  message: string;
+  revisedDueAt?: string | null;
+  files?: string[];
+  links?: string[];
+}
+
+/* ---------- progress summaries (M9) ---------- */
+
+/** Server-computed boss dashboard counts. */
+export interface BossSummary {
+  awaitingReview: number;
+  changesRequested: number;
+  approved: number;
+  overdue: number;
+  openTasks: number;
+}
+
+/** Server-computed employee dashboard counts (own rows only). */
+export interface EmployeeSummary {
+  submitted: number;
+  changesRequested: number;
+  approved: number;
+  dueThisWeek: number;
+  overdue: number;
+}
+
+export interface SummaryResponse {
+  /** Null unless the caller holds the boss role. */
+  boss: BossSummary | null;
+  employee: EmployeeSummary;
+  now: string;
+}
+
 /* ---------- errors ---------- */
 
 export interface ApiErrorBody {

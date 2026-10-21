@@ -26,10 +26,20 @@ import {
   AssignmentStateBadge,
   PresentationBadge,
   PriorityBadge,
+  SubmissionStatusBadge,
   TaskStateBadge,
 } from "@/components/tasks/StatusBadges";
+import { SubmissionForm } from "@/components/tasks/SubmissionForm";
+import { EvidenceViewer } from "@/components/tasks/EvidenceViewer";
+import { ActivityTimeline } from "@/components/tasks/ActivityTimeline";
 import { dueLabel, formatInstant, relativeFromNow, toWallClockInput } from "@/lib/format";
-import { RELEASE_OFFSET_PRESETS, type ActivityEvent, type Task, type TaskPriority } from "@/lib/api/types";
+import {
+  RELEASE_OFFSET_PRESETS,
+  type ActivityEvent,
+  type SubmissionWithEvidence,
+  type Task,
+  type TaskPriority,
+} from "@/lib/api/types";
 
 /**
  * Task detail, resolved by role (plan §4): the boss reads `GET /tasks/:id`
@@ -51,28 +61,8 @@ type Loaded =
 type ReleaseMode = "keep" | "preset" | "custom";
 
 const INPUT_CLASSES =
-  "min-h-10 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink " +
+  "min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink " +
   "focus-visible:outline-2 focus-visible:outline-primary";
-
-function ActivityFeed({ activity, timezone }: { activity: ActivityEvent[]; timezone: string }) {
-  if (activity.length === 0) return null;
-  return (
-    <Card>
-      <CardTitle>History</CardTitle>
-      <CardDescription>Every recorded change, newest first.</CardDescription>
-      <ol className="mt-4 flex flex-col gap-3">
-        {activity.map((event) => (
-          <li key={event.id} className="flex flex-col gap-0.5 border-l-2 border-line pl-3">
-            <p className="text-sm text-ink">{event.summary}</p>
-            <p className="text-xs text-ink-muted">
-              {formatInstant(event.createdAt, timezone)} · {relativeFromNow(event.createdAt)}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </Card>
-  );
-}
 
 function TaskMeta({
   task,
@@ -117,6 +107,56 @@ function TaskMeta({
           <h2 className="text-sm font-medium text-ink">Instructions</h2>
           <p className="mt-2 whitespace-pre-line text-sm text-ink-muted">{task.instructions}</p>
         </div>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * The attempts of one assignment, newest first (M6). Each attempt is immutable
+ * and shows its own verdict, so an employee can always see what they submitted
+ * and what the boss said about it. Evidence bytes stay private: the viewer
+ * fetches a short-lived signed URL on demand (plan §5.5).
+ */
+function AttemptsCard({
+  submissions,
+  timezone,
+  emptyHint,
+}: {
+  submissions: SubmissionWithEvidence[];
+  timezone: string;
+  emptyHint?: string;
+}) {
+  return (
+    <Card>
+      <CardTitle>Your submissions</CardTitle>
+      <CardDescription>
+        Every attempt is kept exactly as you sent it — nothing is overwritten.
+      </CardDescription>
+      {submissions.length === 0 ? (
+        <p className="mt-3 text-sm text-ink-muted">{emptyHint ?? "You have not submitted yet."}</p>
+      ) : (
+        <ol className="mt-4 flex flex-col gap-5">
+          {submissions.map((submission) => (
+            <li key={submission.id} className="border-l-2 border-line pl-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-ink">Attempt {submission.attempt}</span>
+                <SubmissionStatusBadge status={submission.status} />
+                <span className="text-xs text-ink-muted">
+                  {formatInstant(submission.createdAt, timezone)}
+                </span>
+              </div>
+              {submission.description && (
+                <p className="mt-2 whitespace-pre-line text-sm text-ink-muted">
+                  {submission.description}
+                </p>
+              )}
+              <div className="mt-3">
+                <EvidenceViewer evidence={submission.evidence} />
+              </div>
+            </li>
+          ))}
+        </ol>
       )}
     </Card>
   );
@@ -535,7 +575,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </ul>
         </Card>
 
-        <ActivityFeed activity={loaded.activity} timezone={timezone} />
+        <ActivityTimeline activity={loaded.activity} timezone={timezone} />
 
         <Modal
           open={confirmCancel}
@@ -564,9 +604,13 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   /* ---------------------------------------------------------------- */
   /* employee view: own assignment                                     */
   /* ---------------------------------------------------------------- */
-  const { assignment, task, activity } = loaded.payload;
+  const { assignment, task, activity, submissions } = loaded.payload;
   const hasOverride = Boolean(assignment.dueAtOverride ?? assignment.revisedDueAt);
   const scheduled = loaded.scheduled;
+  // The server is the authority on whether work can be submitted; the client
+  // mirrors it so the form only appears when the action is actually legal
+  // (`assigned`/`changes_requested`, task still open).
+  const canSubmit = task.state === "open" && (assignment.state === "assigned" || assignment.state === "changes_requested");
 
   return (
     <div className="flex flex-col gap-6">
@@ -579,6 +623,28 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           {scheduled && <Badge tone="info">Not yet released</Badge>}
         </div>
       </header>
+
+      {assignment.state === "changes_requested" && (() => {
+        // The most recent attempt carries the boss's request; it is rendered
+        // prominently (not just in the history) because it is the employee's
+        // next action and outranks every other item in their queue (plan §4.3).
+        const latestRequest = submissions.find(
+          (attempt) => attempt.reviewAction?.action === "changes_requested",
+        )?.reviewAction;
+        return (
+          <Alert tone="warning" title="Your boss asked for changes" role="status">
+            <span className="block whitespace-pre-line">
+              {latestRequest?.message ?? "Open the latest attempt below to read the request."}
+            </span>
+            {latestRequest?.revisedDueAt && (
+              <span className="mt-2 block text-sm">
+                New deadline: {formatInstant(latestRequest.revisedDueAt, timezone)} ·{" "}
+                {relativeFromNow(latestRequest.revisedDueAt)}
+              </span>
+            )}
+          </Alert>
+        );
+      })()}
 
       <TaskMeta
         task={task}
@@ -612,7 +678,23 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         )}
       </Card>
 
-      <ActivityFeed activity={activity} timezone={timezone} />
+      {canSubmit && <SubmissionForm assignmentId={assignment.id} onSubmitted={() => void load()} />}
+
+      {!canSubmit && assignment.state === "submitted" && (
+        <Alert tone="info" title="Waiting for review">
+          Your submission is with your boss. You will be able to submit a revised attempt if changes
+          are requested.
+        </Alert>
+      )}
+      {!canSubmit && assignment.state === "approved" && (
+        <Alert tone="success" title="Approved">
+          Your boss approved this work. Nothing further is needed.
+        </Alert>
+      )}
+
+      <AttemptsCard submissions={submissions} timezone={timezone} />
+
+      <ActivityTimeline activity={activity} timezone={timezone} />
 
       <Link href="/dashboard">
         <Button variant="ghost">Back to dashboard</Button>
